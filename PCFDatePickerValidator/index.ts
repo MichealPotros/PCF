@@ -1,13 +1,12 @@
 import { IInputs, IOutputs } from "./generated/ManifestTypes";
+import * as monthJsonData from './languages/PCFDataPicker_languages.json';
 
 export class PCFDatePickerValidator implements ComponentFramework.StandardControl<IInputs, IOutputs> {
     private context: ComponentFramework.Context<IInputs>;
-    private container: HTMLDivElement;
-    private baseDate: string;
-    private dateFormat: string;
+    private container: HTMLDivElement; 
+    private dateFormat: Date | null;
     private currentYear: number;
-    private daySelectValues: Array<string>;
-    private monthSelectValues: any;
+    private daySelectValues: Array<string>; 
     private yearSelectValues: Array<string>;
     private futureYearsCount: number;
     private _notifyOutputChanged: () => void;
@@ -15,17 +14,41 @@ export class PCFDatePickerValidator implements ComponentFramework.StandardContro
 	private daySelectElement: HTMLSelectElement;
     private yearSelectElement: HTMLSelectElement;
     private divParentElement: HTMLDivElement;
-    private selectedDay: string;
+
+	private monthObject:  [string, string][];
+	private monthData: any[];
+
 
 	constructor() {
-
     }
+
+	//Handles the languages
+	private readMonthObject(languageCode: string): { [key: string]: string } | undefined { 
+		const monthObject = this.monthData.find(item => item.language === languageCode)?.months;
+		return monthObject;
+	}
+	private sortObjectByValues(obj: {[key: string]: string}):  [string, string][] {
+		// Convert the object to an array of key-value pairs
+		const keyValueArray: [string, string][] = Object.entries(obj);
+	
+		// Sort the array based on the string values
+		keyValueArray.sort((a, b) => a[1].localeCompare(b[1]));
+	
+		// Convert the sorted array back to an object
+		const sortedObject: {[key: string]: string} = Object.fromEntries(keyValueArray);
+	
+		return keyValueArray;
+	}
+
     public init(context: ComponentFramework.Context<IInputs>, notifyOutputChanged: () => void, state: ComponentFramework.Dictionary, container:HTMLDivElement)
-	{
+	{ 
+		// this.monthObject = monthJsonData as { [key: string]: string };
+		this.monthData= monthJsonData ;
+		this.monthObject = this.sortObjectByValues(this.readMonthObject("1025") as {[key: string]: string});
+		
 		this.context = context;
-		this.container = container;
-		this.baseDate = context.parameters.Field.raw && context.parameters.Field.raw.length ? context.parameters.Field.raw : "";
-		//this.dateFormat = context.parameters.DateFormat.raw && context.parameters.DateFormat.raw.length ? context.parameters.DateFormat.raw : "";
+		this.container = container; 
+		this.dateFormat = context.parameters.DateControl.raw? context.parameters.DateControl.raw:null;
 		this.currentYear = new Date().getFullYear();
         this.futureYearsCount = 30;
 		this._notifyOutputChanged = notifyOutputChanged;
@@ -37,7 +60,6 @@ export class PCFDatePickerValidator implements ComponentFramework.StandardContro
         this.divParentElement.classList.add("container");
         this.divParentElement.appendChild(this.daySelectElement);
 		this.InitDayDropdown();
-		this.monthSelectValues = {"Select month" :"0"};
 		let yearStart =  this.currentYear - 120;
         let yearEnd =  this.currentYear +  this.futureYearsCount;
         let yearsArr = new Array<string>();
@@ -86,18 +108,19 @@ export class PCFDatePickerValidator implements ComponentFramework.StandardContro
 	private InitMonthDropdown(isFromYear: boolean) {
 		let context = this;
 		if(isFromYear){
-		this.monthSelectValues = {"Select month": "0", "Jan": "01", "Feb": "02", "Mar": "03", "Apr": "04", "May": "05", "Jun": "06", "Jul": "07", "Aug": "08", "Sep": "09", "Oct": "10", "Nov": "11", "Dec": "12"};
+			for (const entry of this.monthObject) { 
+				const key = entry[0];
+				const value = entry[1];
+				context.monthSelectElement.add(new Option(key));
+			}
 		}
 		else{
-		this.monthSelectElement = document.createElement("select");
-		this.monthSelectElement.classList.add("dnl-first-select");
-		//this.container.append(this.monthSelectElement);
-        this.divParentElement.appendChild(this.monthSelectElement);
-
+			this.monthSelectElement = document.createElement("select");
+			this.monthSelectElement.classList.add("dnl-first-select");
+			this.divParentElement.appendChild(this.monthSelectElement);
+			context.monthSelectElement.add(new Option(this.monthObject[0][0]));
 		}
-		Object.keys(this.monthSelectValues).forEach(function (el) {
-			context.monthSelectElement.add(new Option(el));
-		});
+		
 		this.monthSelectElement.selectedIndex = 0;
 		this.monthSelectElement.addEventListener("change", this.firstChange.bind(this));
 	}
@@ -110,7 +133,6 @@ export class PCFDatePickerValidator implements ComponentFramework.StandardContro
 	}
 
 	private dayChange(){
-		this.selectedDay = this.daySelectElement[this.daySelectElement.selectedIndex].innerText;
 		this._notifyOutputChanged();
 	}
 
@@ -149,14 +171,19 @@ export class PCFDatePickerValidator implements ComponentFramework.StandardContro
 
 	public updateView(context: ComponentFramework.Context<IInputs>): void
 	{
-		this.baseDate = context.parameters.Field.raw ? context.parameters.Field.raw : "";
+		//this.baseDate = context.parameters.DateControl.raw ? context.parameters.DateControl.raw : "";
 	}
 
 	public getOutputs(): IOutputs
 	{
-		return {Field: `${this.daySelectElement[this.daySelectElement.selectedIndex].innerText}-${this.monthSelectElement[this.monthSelectElement.selectedIndex].innerText}-${this.yearSelectElement[this.yearSelectElement.selectedIndex].innerText}`};
+		if(this.daySelectElement.selectedIndex > 0 && this.monthSelectElement.selectedIndex> 0 && this.yearSelectElement.selectedIndex > 0){
+			return {DateControl: new Date(parseInt(this.yearSelectElement[this.yearSelectElement.selectedIndex].innerText),this.monthSelectElement.selectedIndex,parseInt(this.daySelectElement[this.daySelectElement.selectedIndex].innerText))};
+		}else{
+			return {DateControl: new Date()};
+		}
 	}
 
 	public destroy(): void
 	{}
+ 
 }
