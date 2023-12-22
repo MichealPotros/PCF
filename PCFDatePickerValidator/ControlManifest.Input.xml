@@ -8,7 +8,7 @@
     </property> -->
     <property name="DateControl" display-name-key="Options_DisplayName" description-key="Options_Description" of-type="DateAndTime.DateOnly" usage="bound" />
     <resources>
-      <code path="index.ts" order="1" />
+      <code path="DatePicker.ts" order="1" />
       <css path="css/dnlSaleDateDropdowns.css" order="1" />
     </resources>
     <feature-usage>
